@@ -2,6 +2,18 @@
 
 InfraPulse is a lightweight and efficient Go-based tool designed for comprehensive infrastructure health monitoring. It continuously checks the status of your servers and services, providing real-time insights and sending immediate email alerts upon detecting any failures.
 
+## Table of Contents
+
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Building from Source](#building-from-source)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Features
 
 - **Concurrent Health Checks:** Uses goroutines to check multiple hosts and ports in parallel.
@@ -56,7 +68,7 @@ InfraPulse can be run in several modes:
   ```sh
   nohup infrapulse -d &
   ```
-  To stop the background process, use OS-level commands (e.g., `kill <PID>`).
+  To stop the background process, use OS-level commands (e.g., `pkill -f infrapulse`).
 
 ### Command-Line Flags
 
@@ -158,6 +170,10 @@ go build -o infrapulse main.go
 
 The daemonization process is implemented by re-executing the `infrapulse` binary with an internal `-internal-daemon` flag. This is handled automatically when you use the `-d` flag.
 
+## Contributing
+
+Contributions are welcome! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for details.
+
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

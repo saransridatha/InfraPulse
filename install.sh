@@ -21,6 +21,50 @@ print_error() {
     exit 1
 }
 
+# --- Uninstall Function ---
+uninstall() {
+    print_info "Uninstalling InfraPulse..."
+    INSTALL_DIR="$HOME/.local/bin"
+    BINARY_PATH="$INSTALL_DIR/infrapulse"
+    CONFIG_DIR="$HOME/.config/infrapulse"
+
+    if [ -f "$BINARY_PATH" ]; then
+        print_info "Removing 'infrapulse' binary from $BINARY_PATH..."
+        rm "$BINARY_PATH"
+        print_success "'infrapulse' binary removed."
+    else
+        print_warning "'infrapulse' binary not found."
+    fi
+
+    if [ -d "$CONFIG_DIR" ]; then
+        read -p "Do you want to remove the configuration directory at $CONFIG_DIR? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            print_info "Removing configuration directory..."
+            rm -r "$CONFIG_DIR"
+            print_success "Configuration directory removed."
+        fi
+    fi
+
+    # Remove systemd service if it exists
+    if [ -f "/etc/systemd/system/infrapulse.service" ]; then
+        print_info "Removing systemd service..."
+        sudo systemctl stop infrapulse
+        sudo systemctl disable infrapulse
+        sudo rm "/etc/systemd/system/infrapulse.service"
+        sudo systemctl daemon-reload
+        print_success "Systemd service removed."
+    fi
+
+    print_success "InfraPulse uninstallation complete."
+    exit 0
+}
+
+# --- Argument Parsing ---
+if [ "$1" == "uninstall" ]; then
+    uninstall
+fi
+
 # --- Installation Steps ---
 
 # 0. Check for existing installation
@@ -110,3 +154,35 @@ echo "You can now run 'infrapulse' from anywhere in your terminal."
 echo "To customize the servers to monitor, edit the configuration file at: $CONFIG_DIR/servers.yaml"
 echo "To enable email alerts, create a 'config.yaml' file in the same directory with your SMTP server details."
 echo "To run InfraPulse in the background, use 'nohup infrapulse -d &' or a service manager like systemd."
+
+# 9. Offer to create systemd service
+create_systemd_service() {
+    read -p "Do you want to create a systemd service to run InfraPulse in the background? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        print_info "Creating systemd service..."
+        SERVICE_FILE="/etc/systemd/system/infrapulse.service"
+        cat > "/tmp/infrapulse.service" << EOL
+[Unit]
+Description=InfraPulse Monitoring Service
+After=network.target
+
+[Service]
+Type=simple
+User=$USER
+ExecStart=$HOME/.local/bin/infrapulse -d
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+EOL
+        sudo mv "/tmp/infrapulse.service" "$SERVICE_FILE"
+        sudo systemctl daemon-reload
+        sudo systemctl enable infrapulse
+        sudo systemctl start infrapulse
+        print_success "Systemd service created and started."
+        print_info "You can check the status with: sudo systemctl status infrapulse"
+    fi
+}
+
+create_systemd_service

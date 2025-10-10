@@ -3,13 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/smtp"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strconv"
+	
 	"strings"
 	"sync"
 	"syscall"
@@ -68,19 +68,21 @@ home, err := os.UserHomeDir()
 
 	serverFile := flag.String("config", defaultServerFile, "Path to the servers.yaml configuration file.")
 daemon := flag.Bool("d", false, "Run in monitoring loop mode. Use 'nohup' or a service manager to run in background.")
-	stop := flag.Bool("stop", false, "This flag is deprecated. Use OS-level commands to stop background processes.")
+	
 	interval := flag.String("i", "", "Check interval in monitoring loop mode (e.g., '60s', '5m'). Overrides config file.")
 	flag.Parse()
 
 	// --- Load Configuration ---
 	if *serverFile == "" {
-		log.Fatalf("Could not find default config path. Please use the -config flag.")
+		slog.Error("Could not find default config path. Please use the -config flag.")
+		os.Exit(1)
 	}
 
 	configFile := filepath.Join(filepath.Dir(*serverFile), "config.yaml")
 	cfg, err := loadConfig(*serverFile, configFile)
 	if err != nil {
-		log.Fatalf("Error loading configuration: %v", err)
+		slog.Error("Error loading configuration", "error", err)
+		os.Exit(1)
 	}
 
 	// --- Create Services ---
@@ -114,7 +116,8 @@ signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	}
 	duration, err := time.ParseDuration(checkInterval)
 	if err != nil {
-		log.Fatalf("Invalid check interval: %v", err)
+		slog.Error("Invalid check interval", "error", err)
+		os.Exit(1)
 	}
 
 	color.Cyan("InfraPulse: Starting monitoring loop...")
@@ -329,7 +332,7 @@ func loadConfig(serverFile, configFile string) (*Config, error) {
 // sendAlertEmail sends a consolidated email with all failure alerts.
 func sendAlertEmail(cfg *Config, alerts []string) {
 	if cfg.AlertRecipient == "" {
-		log.Println("Email alert failed: AlertRecipient is not set in config.yaml")
+		slog.Warn("Email alert failed: AlertRecipient is not set in config.yaml")
 		return
 	}
 
@@ -354,9 +357,9 @@ func sendAlertEmail(cfg *Config, alerts []string) {
 
 	err := smtp.SendMail(addr, auth, from, to, message)
 	if err != nil {
-		log.Printf("Email alert failed to send: %v", err)
+		slog.Error("Email alert failed to send", "error", err)
 		return
 	}
 
-	log.Println("Email alert sent successfully.")
+	slog.Info("Email alert sent successfully.")
 }
